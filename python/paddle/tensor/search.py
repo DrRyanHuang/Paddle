@@ -22,6 +22,7 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc, Variable
+from paddle.jit.marker import unified
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_dtype, check_variable_and_dtype
@@ -1421,6 +1422,7 @@ def kthvalue(
     return values, indices
 
 
+@unified
 def top_p_sampling(
     x: Tensor,
     ps: Tensor,
