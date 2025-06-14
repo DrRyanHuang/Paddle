@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from paddle.distributed.communication import stream
+from paddle.jit.marker import unified
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
     from paddle.distributed.communication.group import Group
 
 
+@unified
 def alltoall(
     out_tensor_list: list[Tensor],
     in_tensor_list: list[Tensor],

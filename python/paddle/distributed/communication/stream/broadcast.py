@@ -25,6 +25,7 @@ from paddle.distributed.communication.group import (
 )
 from paddle.distributed.communication.reduce import _to_inplace_op
 from paddle.framework import in_pir_mode
+from paddle.jit.marker import unified
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -88,6 +89,7 @@ def _broadcast_in_static_mode(
         op.dist_attr.execution_stream = "default"
 
 
+@unified
 def broadcast(
     tensor: Tensor,
     src: int,

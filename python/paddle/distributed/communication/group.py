@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Literal
 import paddle
 import paddle.distributed as dist
 from paddle import framework
+from paddle.jit.marker import unified
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -322,6 +323,7 @@ def wait(
         _sync_comm_stream(tensor, ring_id)
 
 
+@unified
 def barrier(group: Group | None = None) -> None:
     """
 

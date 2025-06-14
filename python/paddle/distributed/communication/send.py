@@ -25,6 +25,7 @@ from paddle.distributed.communication.group import (
 from paddle.distributed.communication.serialization_utils import (
     convert_object_to_tensor,
 )
+from paddle.jit.marker import unified
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
     from paddle.distributed.communication.group import Group
 
 
+@unified
 def send(
     tensor: Tensor,
     dst: int = 0,

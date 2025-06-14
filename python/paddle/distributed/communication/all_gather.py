@@ -21,6 +21,7 @@ import numpy as np
 import paddle
 from paddle import framework
 from paddle.distributed.communication import stream
+from paddle.jit.marker import unified
 
 from .serialization_utils import (
     convert_object_to_tensor,
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
     _T = TypeVar("_T")
 
 
+@unified
 def all_gather(
     tensor_list: list[Tensor],
     tensor: Tensor,

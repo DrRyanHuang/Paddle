@@ -69,6 +69,7 @@ from paddle.io.dataloader.batch_sampler import (
     DistributedBatchSampler,
     _InfiniteIterableSampler,
 )
+from paddle.jit.marker import unified
 from paddle.optimizer import Optimizer
 
 from .auto_dp_utils import (
@@ -233,6 +234,7 @@ class DistAttr(core.TensorDistAttr):
 # Part2: DistTensor construction related APIs
 
 
+@unified
 def shard_tensor(
     data: Tensor | TensorLike | NestedNumericSequence,
     mesh: ProcessMesh,
@@ -815,6 +817,7 @@ def dtensor_from_fn(
 # Part3: Data conversion related APIs
 
 
+@unified
 def reshard(
     dist_tensor: Tensor, mesh: ProcessMesh, placements: list[Placement]
 ) -> Tensor:
