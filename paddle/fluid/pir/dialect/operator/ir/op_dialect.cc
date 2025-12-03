@@ -622,6 +622,132 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
   CustomOpInfoInterfaceModel() : OpYamlInfoInterface::Concept(GetPirOpInfo) {}
 };
 
+struct CustomPyOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
+  static OpInfoTuple GetPirOpInfo(const std::string& pir_op_name) {
+    std::cout << "CustomPyOpInfoInterfaceModel: pir_op_name: " << pir_op_name
+              << std::endl;
+    const auto& op_meta =
+        paddle::framework::detail::GetCustomPyOpInfoByPirName(pir_op_name);
+    // const auto* grad_op_meta_ptr =
+    //     paddle::framework::detail::GetGradOpInfoByFwdPirName(pir_op_name);
+    std::cout << "1CustomPyOpInfoInterfaceModel: pir_op_name: " << pir_op_name
+              << std::endl;
+
+    std::vector<paddle::dialect::OpInputInfo> inputs_info;
+    std::vector<paddle::dialect::OpAttributeInfo> attributes_info;
+    std::vector<paddle::dialect::OpOutputInfo> outputs_info;
+    std::vector<std::string> param_names;
+    // translate input info
+    auto& op_input_names = OpMetaInfoHelper::GetInputs(op_meta);
+    for (const auto& input_name : op_input_names) {
+      param_names.push_back(input_name);
+      bool is_optional = false;
+      bool with_grad_semantic = false;
+      std::string input_type = "paddle::dialect::DenseTensorType";
+      if (paddle::framework::detail::IsOptionalVar(input_name)) {
+        is_optional = true;
+      }
+      if (paddle::framework::detail::IsDuplicableVar(input_name)) {
+        input_type = "pir::VectorType<paddle::dialect::DenseTensorType>";
+      }
+      std::cout << "2CustomPyOpInfoInterfaceModel: pir_op_name: " << pir_op_name
+                << std::endl;
+
+      // grad_op_meta_ptr
+      // if (grad_op_meta_ptr) {
+      //   const auto& grad_op_name =
+      //       OpMetaInfoHelper::GetOpName(*grad_op_meta_ptr);
+      //   auto& grad_op_output_names =
+      //       OpMetaInfoHelper::GetOutputs(*grad_op_meta_ptr);
+      //   bool is_double_grad_op =
+      //       (grad_op_name.find(paddle::framework::kDoubleGradSuffix) !=
+      //        grad_op_name.npos)
+      //           ? true
+      //           : false;
+      //   for (auto& grad_op_output_name : grad_op_output_names) {
+      //     auto fwd_input_name = paddle::framework::detail::NoGrad(
+      //         grad_op_output_name, is_double_grad_op);
+      //     if (input_name == fwd_input_name) {
+      //       with_grad_semantic = true;
+      //       break;
+      //     }
+      //   }
+      // }
+      // Now, we only support dense tensor as input.
+      inputs_info.push_back(paddle::dialect::OpInputInfo{input_name,
+                                                         input_type,
+                                                         is_optional,
+                                                         false,
+                                                         false,
+                                                         with_grad_semantic});
+    }
+    std::cout << "3CustomPyOpInfoInterfaceModel: pir_op_name: " << pir_op_name
+              << std::endl;
+    // translate attr info
+    auto& op_attrs = OpMetaInfoHelper::GetAttrs(op_meta);
+    for (const auto& op_attr : op_attrs) {
+      auto attr_name_and_type = paddle::ParseAttrStr(op_attr);
+      auto attr_name = attr_name_and_type[0];
+      auto attr_type_str = attr_name_and_type[1];
+      param_names.push_back(attr_name);
+      if (CppTypeToAttrTypeMap().count(attr_type_str) == 0) {
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Unsupported `%s` type value as custom attribute now. "
+            "Supported data types include `bool`, `int`, `float`, "
+            "`int64_t`, `std::string`, `std::vector<int>`, "
+            "`std::vector<float>`, `std::vector<int64_t>`, "
+            "`std::vector<std::string>`, Please check whether "
+            "the attribute data type and data type string are matched.",
+            attr_type_str));
+      }
+      std::string attr_pir_type = CppTypeToAttrTypeMap().at(attr_type_str);
+      attributes_info.emplace_back(attr_name, attr_pir_type, "");
+    }
+    std::cout << "4CustomPyOpInfoInterfaceModel: pir_op_name: " << pir_op_name
+              << std::endl;
+
+    // translate output info
+    auto& op_output_names = OpMetaInfoHelper::GetOutputs(op_meta);
+    for (const auto& output_name : op_output_names) {
+      bool is_optional = false;
+      if (paddle::framework::detail::IsOptionalVar(output_name)) {
+        is_optional = true;
+      }
+      // Now, we only support dense tensor as output.
+      outputs_info.push_back(paddle::dialect::OpOutputInfo{
+          output_name, "paddle::dialect::DenseTensorType", is_optional, false});
+    }
+
+    auto& inplace_maps = OpMetaInfoHelper::GetInplaceReverseMap(op_meta);
+    std::cout << "5CustomPyOpInfoInterfaceModel: pir_op_name: " << pir_op_name
+              << std::endl;
+
+    if (!inplace_maps.empty()) {
+      VLOG(3) << "Register Custom Python Operator: op inplace_map: "
+              << string::join_strings(inplace_maps, ',', [](auto& pair) {
+                   return pair.first + ": " + pair.second;
+                 });
+    }
+
+    std::vector<std::pair<std::string, std::string>> vec_inplace;
+    for (const auto& inplace_map : inplace_maps) {
+      vec_inplace.emplace_back(inplace_map);
+    }
+    std::cout << "6CustomPyOpInfoInterfaceModel: pir_op_name: " << pir_op_name
+              << std::endl;
+
+    // we only need kernel params name in run_time_info
+    paddle::dialect::OpRunTimeInfo run_time_info =
+        paddle::dialect::OpRunTimeInfo(
+            "", {}, "", param_names, {}, {}, vec_inplace, {});
+
+    return std::make_tuple(
+        inputs_info, attributes_info, outputs_info, run_time_info, "");
+  }
+
+  CustomPyOpInfoInterfaceModel() : OpYamlInfoInterface::Concept(GetPirOpInfo) {}
+};
+
 struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
   static std::vector<std::vector<pir::Value>> CustomOpVjp(
       pir::Operation* op,
@@ -1141,6 +1267,83 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
                                verify_func);
 }
 
+CustomPyOpDialect::CustomPyOpDialect(pir::IrContext* context)
+    : pir::Dialect(name(), context, pir::TypeId::get<CustomPyOpDialect>()) {}
+
+// void CustomPyOpDialect::PrintType(pir::Type type, std::ostream& os) const {
+//   PrintTypeImpl(type, os);
+// }
+
+// void CustomPyOpDialect::PrintAttribute(pir::Attribute attr,
+//                                      std::ostream& os) const {
+//   PrintAttributeImpl(attr, os);
+// }
+
+// pir::OpPrintFn CustomPyOpDialect::PrintOperation(const pir::Operation& op)
+// const {
+//   return nullptr;
+// }
+
+void CustomPyOpDialect::RegisterCustomPyOp(const paddle::OpMetaInfo& op_meta) {
+  pir::TypeId id = IdManager::Instance().CreateId();
+  std::string op_name = paddle::framework::kCustomPyDialectPrefix +
+                        OpMetaInfoHelper::GetOpName(op_meta);
+  std::vector<pir::TypeId> traits;
+
+  auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(op_meta);
+  if (!inplace_map.empty()) {
+    std::cout << "RegisterCustomPyOp "
+              << "exists"
+              << "inplace_map" << std::endl;
+    op_name += "_";
+    traits.push_back(pir::TypeId::get<paddle::dialect::InplaceTrait>());
+  }
+
+  char* op_name_c = new char[op_name.size() + 1];
+  snprintf(op_name_c, op_name.size() + 1, "%s", op_name.c_str());
+  op_names_.push_back(op_name_c);
+
+  auto& op_attrs = OpMetaInfoHelper::GetAttrs(op_meta);
+  std::vector<std::string> attr_names;
+  for (const auto& op_attr : op_attrs) {
+    auto attr_name_and_type = paddle::ParseAttrStr(op_attr);
+    auto attr_name = attr_name_and_type[0];
+    attr_names.push_back(attr_name);
+  }
+  const char** attr_name =
+      AttributeManager::Instance().ToCharPointers(attr_names);
+  uint32_t attr_num = attr_names.size();
+
+  std::cout << "attr_num: " << attr_num << std::endl;
+
+  std::set<pir::InterfaceValue> interface_values;
+  pir::InterfaceValue op_info_interface =
+      pir::InterfaceValue::Get<OpYamlInfoInterface,
+                               CustomPyOpInfoInterfaceModel>();
+  interface_values.insert(std::move(op_info_interface));
+
+  // if (paddle::framework::detail::HasGradOp(op_name)) { // 目前没有 grad
+  // 不用管
+  //   std::cout << "WTF? why has grad op?" << std::endl;
+  //   pir::InterfaceValue vjp_interface =
+  //       pir::InterfaceValue::Get<VjpInterface, CustomOpVjpInterfaceModel>();
+  //   interface_values.insert(std::move(vjp_interface));
+  // }
+
+  // Currently we set empty verify function and will reset it if it is used in
+  // future.
+  pir::VerifyPtr verify_func = [](pir::Operation* op) {};
+  ir_context()->RegisterOpInfo(this,
+                               id,
+                               op_names_.back(),
+                               std::move(interface_values),
+                               traits,
+                               attr_num,
+                               attr_name,
+                               verify_func,
+                               verify_func);
+}
+
 // customEngineDialect
 
 CustomEngineDialect::CustomEngineDialect(pir::IrContext* context)
@@ -1169,4 +1372,5 @@ pir::OpPrintFn CustomEngineDialect::PrintOperation(
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomOpDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomPyOpDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomEngineDialect)

@@ -519,6 +519,18 @@ const InferSpmdFunc& OpMetaInfoHelper::GetInferSpmdFn(
   return info.infer_spmd_fn_;
 }
 
+// Python Custom Op
+const WrapPythonFunction& OpMetaInfoHelper::GetPyCustomPyOpFunction(const paddle::OpMetaInfo& info){
+  return info.py_funccc;
+}
+
+const WrapInferMetaPythonFunction& OpMetaInfoHelper::GetPyCustomPyOpInferMetaFunction(const paddle::OpMetaInfo& info){
+  return info.py_funccc_infer_meta;
+}
+
+
+
+
 #ifdef PADDLE_WITH_TENSORRT
 const TrtGetOutputDimsFunc& OpMetaInfoHelper::GetTrtInferShapeFn(
     const paddle::OpMetaInfo& info) {
@@ -675,6 +687,16 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferSpmdFn(InferSpmdFunc func) {
   info_ptr_->SetInferSpmdFn(std::forward<InferSpmdFunc>(func));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetPyCustomPyOpFunction(WrapPythonFunction func) {
+  info_ptr_->py_funccc = func;
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetPyCustomPyOpInferMetaFunction(WrapInferMetaPythonFunction func) {
+  info_ptr_->py_funccc_infer_meta = func;
   return *this;
 }
 
